@@ -1,0 +1,134 @@
+<template>
+  <q-layout view="lHh Lpr lFf">
+    <q-header>
+      <q-toolbar class="q-px-md q-py-md bg-white">
+        <q-toolbar-title class="flex items-center justify-between">
+          <div class="seat flex items-center no-bottom bg-white q-py-sm q-px-md border">
+            <img
+              alt="Logo seat"
+              src="~assets/intro/seat.png"
+              width="24"
+            >
+            <p class="q-ma-none q-ml-sm text-caption text-weight-bold text-red">{{tableNo}}</p>
+          </div>
+          <div class="seat flex items-center no-bottom bg-white q-py-sm q-px-md border" @click.prevent="goToLogin">
+            <img
+              alt="Icon file"
+              src="~assets/home/icon/file.png"
+              width="20"
+            >
+            <p class="q-ma-none q-ml-sm text-caption text-weight-bold text-primary">{{$t('home.list_transaction')}}</p>
+          </div>
+        </q-toolbar-title>
+      </q-toolbar>
+    </q-header>
+
+    <q-page-container>
+      <q-page>
+        <div class="q-px-md q-pt-md flex items-center full-width grid-voucher" v-if="isLogin">
+          <div class="bg-green-light flex items-center radius-left voucher">
+            <img
+              alt="Icon gift"
+              src="~assets/home/icon/gift.png"
+              width="20"
+            >
+            <p class="q-ma-none q-ml-sm text-body2 text-weight-bold text-white">{{$t('home.have_voucher')}} {{haveVoucher}} {{$t('home.special_voucher')}}</p>
+          </div>
+          <q-btn
+            class="btn-more text-weight-bold text-capitalize bg-green-dark radius-right"
+            unelevated
+            text-color="white"
+            :label="$t('button.see_voucher')"
+            type="button"
+            size="md"
+            @click.prevent="goToListVoucher"
+          />
+        </div>
+        <NewProducts />
+        <q-separator class="separator-section" />
+        <RecommendedList />
+      </q-page>
+    </q-page-container>
+
+    <Footer />
+  </q-layout>
+</template>
+
+<script>
+import { useQuasar } from 'quasar'
+import { defineComponent, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import NewProducts from 'components/menu/NewProducts.vue' 
+import RecommendedList from 'components/menu/RecomendedList.vue' 
+import Footer from 'components/footer/Footer.vue'
+import VoucherRepository from 'repositories/voucher.repository'
+const voucherRepo = new VoucherRepository()
+import Encryptions from 'helpers/Encryptions'
+const encrypt = new Encryptions()
+import AuthModel from 'models/auth.model'
+const auth = new AuthModel()
+
+export default defineComponent({
+  name: 'Homepage',
+  components: {
+    NewProducts,
+    RecommendedList,
+    Footer
+  },
+  setup () {
+    const $q = useQuasar()
+    const router = useRouter()
+    const haveVoucher = ref('')
+    const tableNo = ref()
+    const isLogin = ref()
+
+    // const decryptedTabelNo = localStorage.getItem("tableNo")
+    // tableNo.value = encrypt.decryptData(decryptedTabelNo)
+    tableNo.value = localStorage.getItem("tableNo")
+    
+    const fetchData = async () => {
+      $q.loading.show({
+        message: 'Sedang mengambil data. Silahkan tunggu...',
+        boxClass: 'bg-grey-2 text-grey-9',
+        spinnerColor: 'primary'
+      })
+
+      await voucherRepo.voucherList().then((data) => {
+        try{
+          haveVoucher.value = data.result.length
+        } catch (err) {
+          $q.loading.hide()
+          $q.notify({
+            type: 'negative',
+            message: 'Gagal Mengambil Data',
+            position: 'top'
+          })
+        }
+      })
+
+      if (auth.isLogin()) {
+        const user = await auth.isLogin()
+        isLogin.value = user.value
+      }
+      
+      $q.loading.hide()
+    }
+
+    onMounted(async () => {
+      await fetchData()
+    })
+
+    return {
+      haveVoucher,
+      tableNo,
+      isLogin,
+      goToListVoucher () {
+        router.push({path: '/emenu/voucher'})
+      },
+      goToLogin () {
+        router.push({path: '/login'})
+      },
+    }
+  }
+})
+</script>
